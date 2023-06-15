@@ -1,1 +1,77 @@
-hello
+<!DOCTYPE html>
+<html>
+
+<body>
+
+    <p>Latitude: <output id="latitude"></output></p>
+    <p>Longitude: <output id="longitude"></output></p>
+    <p>County: <output id="county"></output></p>
+    <div id="hourly-forecast"></div>
+
+    <script>
+        let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        function fetchJsonThen(url, func) {
+            fetch(url).then(
+                function (response) {
+                    return response.json();
+                }
+            ).then(
+                function (data) {
+                    return func(data);
+                }
+            ).catch(
+                function (err) {
+                    console.log('Fetch Error :-S', err)
+                }
+            );
+        }
+        function getGeoLocation() {
+            navigator.geolocation.getCurrentPosition(handleGeoLocation);
+        }
+        function handleGeoLocation(position) {
+            const latitude = position.coords.latitude.toFixed(4);
+            const longitude = position.coords.longitude.toFixed(4);
+            document.getElementById("latitude").innerHTML = latitude;
+            document.getElementById("longitude").innerHTML = longitude;
+            getLocationMetadata(latitude, longitude);
+        }
+        function getLocationMetadata(latitude, longitude) {
+            fetchJsonThen(
+                "https://api.weather.gov/points/" + latitude + "," + longitude,
+                function (data) {
+                    fetchJsonThen(data.properties.forecastHourly, getHourlyForecast);
+                    //fetchJsonThen(data.properties.forecast, getDailyForecast);
+                    fetchJsonThen(data.properties.county, getLocationName);
+                }
+            )
+        }
+        function getHourlyForecast(data) {
+            let tableText = "<table border=\"1\"><tr><td>Time</td><td>Icon</td><td>Temp</td><td>Rain%</td><td>Wind</td><td>Description</td></tr>";
+            for (let period of data.properties.periods) {
+                tableText += formatPeriod(period);
+            }
+            document.getElementById("hourly-forecast").innerHTML = tableText;
+        }
+        function formatPeriod(period) {
+            let row = "<tr style=\"color:" + (period.isDaytime ? "black" : "grey") + "\">";
+            let start = new Date(Date.parse(period.startTime));
+            row += "<td>" + dayNames[start.getDay()] + " " + start.getHours() + "</td>";
+            row += "<td><img src=\"" + period.icon + "\"></td>";
+            row += "<td>" + period.temperature + " F</td>";
+            row += "<td>" + period.probabilityOfPrecipitation.value + "%</td>";
+            row += "<td>" + period.windSpeed + "</td>";
+            row += "<td>" + period.shortForecast + "</td>";
+            return row + "</tr>";
+        }
+        function getDailyForecast(data) {
+
+        }
+        function getLocationName(data) {
+            document.getElementById("county").innerHTML = data.properties.name;
+        }
+        getGeoLocation();
+    </script>
+
+</body>
+
+</html>
