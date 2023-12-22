@@ -1,8 +1,22 @@
 <!DOCTYPE html>
 <html>
 
+<head>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+    </style>
+</head>
+
 <body>
 
+    <div class="topnav">
+        <div class="search-container">
+            <input id="citySearch" type="text" placeholder="Search for city...">
+            <button onclick="searchLocation()">search</button>
+        </div>
+    </div>
     <p>Latitude: <output id="latitude"></output></p>
     <p>Longitude: <output id="longitude"></output></p>
     <p>County: <output id="county"></output></p>
@@ -21,16 +35,31 @@
                 }
             ).catch(
                 function (err) {
-                    console.log('Fetch Error :-S', err)
+                    console.log('Fetch Error :-S', err);
                 }
             );
         }
-        function getGeoLocation() {
-            navigator.geolocation.getCurrentPosition(handleGeoLocation);
+        function searchLocation() {
+            var input,
+            input = document.getElementById("citySearch");
+            fetchJsonThen("https://nominatim.openstreetmap.org/search?format=geocodejson&featureType=city&addressdetails=1&q=" + input.value, handleGeocodeResponse)
         }
-        function handleGeoLocation(position) {
-            const latitude = position.coords.latitude.toFixed(4);
-            const longitude = position.coords.longitude.toFixed(4);
+        function handleGeocodeResponse(data) {
+            if(data.features.length < 1) {
+                console.log("Failed to find any cities with that name.");
+                return;
+            }
+            var top = data.features[0];
+            console.log(top.properties.geocoding.name + ", " + top.properties.geocoding.state);
+            console.log(top.geometry.coordinates[0] + ", " + top.geometry.coordinates[1]);
+            handleGeoLocation(top.geometry.coordinates[1], top.geometry.coordinates[0])
+        }
+        function getGeoLocation() {
+            navigator.geolocation.getCurrentPosition(function(position) {handleGeoLocation(position.coords.latitude, position.coords.longitude)});
+        }
+        function handleGeoLocation(latitude, longitude) {
+            latitude = latitude.toFixed(4);
+            longitude = longitude.toFixed(4);
             document.getElementById("latitude").innerHTML = latitude;
             document.getElementById("longitude").innerHTML = longitude;
             getLocationMetadata(latitude, longitude);
@@ -39,6 +68,7 @@
             fetchJsonThen(
                 "https://api.weather.gov/points/" + latitude + "," + longitude,
                 function (data) {
+                    console.log(data)
                     fetchJsonThen(data.properties.forecastHourly, getHourlyForecast);
                     //fetchJsonThen(data.properties.forecast, getDailyForecast);
                     fetchJsonThen(data.properties.county, getLocationName);
@@ -69,7 +99,7 @@
         function getLocationName(data) {
             document.getElementById("county").innerHTML = data.properties.name;
         }
-        getGeoLocation();
+        //getGeoLocation();
     </script>
 
 </body>
