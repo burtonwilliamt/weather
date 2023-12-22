@@ -3,8 +3,55 @@
 
 <head>
     <style>
+        * {box-sizing: border-box;}
         body {
             font-family: Arial, Helvetica, sans-serif;
+            font-size: 32px;
+            background-color: #F5EFE7;
+            margin: 0px;
+        }
+        .topnav {
+            background-color: #D8C4B6;
+            overflow: hidden;
+            margin: 0px;
+            padding: 0px;
+        }
+        .search-container {
+        }
+        .search-container input[type=text]{
+            font-size: 32px;
+            padding: 8px;
+            margin-top: 8px;
+            margin-right: 0px;
+            margin-bottom: 8px;
+            border: none;
+        }
+        .search-container button{
+            font-size: 32px;
+            padding: 8px;
+            margin-left: 0px;
+            color: white;
+            background-color: #CD1818;
+            border: none;
+        }
+        #hourly-forecast table{
+            border-collapse: collapse;
+            border-spacing: 25px;
+            width: 100%;
+            color: white;
+        }
+        #hourly-forecast td, #hourly-forecast th {
+            padding: 8px;
+        }
+        #hourly-forecast tr {
+            border: 8px solid #F5EFE7;
+            border-radius: 25px;
+        }
+        .day {
+            background-color: #4F709C;
+        }
+        .night {
+            background-color: #213555;
         }
     </style>
 </head>
@@ -13,8 +60,7 @@
 
     <div class="topnav">
         <div class="search-container">
-            <input id="citySearch" type="text" placeholder="Search for city...">
-            <button onclick="searchLocation()">search</button>
+            <input id="citySearch" type="text" placeholder="Search for city..."><button onclick="searchLocation()">search</button>
         </div>
     </div>
     <p>Latitude: <output id="latitude"></output></p>
@@ -76,17 +122,16 @@
             )
         }
         function getHourlyForecast(data) {
-            let tableText = "<table border=\"1\"><tr><td>Time</td><td>Icon</td><td>Temp</td><td>Rain%</td><td>Wind</td><td>Description</td></tr>";
+            let tableText = "<table>";
             for (let period of data.properties.periods) {
                 tableText += formatPeriod(period);
             }
             document.getElementById("hourly-forecast").innerHTML = tableText;
         }
         function formatPeriod(period) {
-            let row = "<tr style=\"color:" + (period.isDaytime ? "black" : "grey") + "\">";
+            let row = "<tr class=\"" + (period.isDaytime ? "day" : "night") + "\">";
             let start = new Date(Date.parse(period.startTime));
-            row += "<td>" + dayNames[start.getDay()] + " " + start.getHours() + "</td>";
-            row += "<td><img src=\"" + period.icon + "\"></td>";
+            row += "<td>" + dayNames[start.getDay()] + " " + start.getHours() + ":00</td>";
             row += "<td>" + period.temperature + " F</td>";
             row += "<td>" + period.probabilityOfPrecipitation.value + "%</td>";
             row += "<td>" + period.windSpeed + "</td>";
