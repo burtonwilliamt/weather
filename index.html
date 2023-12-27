@@ -3,55 +3,98 @@
 
 <head>
     <style>
-        * {box-sizing: border-box;}
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: 32px;
             background-color: #F5EFE7;
             margin: 0px;
         }
+
         .topnav {
             background-color: #D8C4B6;
             overflow: hidden;
             margin: 0px;
             padding: 0px;
         }
+
         .search-container {
+            margin: 8px;
         }
-        .search-container input[type=text]{
+
+        .search-container input[type=text] {
             font-size: 32px;
             padding: 8px;
-            margin-top: 8px;
-            margin-right: 0px;
-            margin-bottom: 8px;
+            margin: 0px;
             border: none;
         }
-        .search-container button{
+
+        .search-container button {
             font-size: 32px;
             padding: 8px;
-            margin-left: 0px;
+            margin: 0px;
             color: white;
             background-color: #CD1818;
             border: none;
         }
-        #hourly-forecast table{
+
+        #hourly-forecast table {
             border-collapse: collapse;
             border-spacing: 25px;
             width: 100%;
             color: white;
         }
-        #hourly-forecast td, #hourly-forecast th {
+
+        #hourly-forecast td,
+        #hourly-forecast th {
             padding: 8px;
         }
+
         #hourly-forecast tr {
             border: 8px solid #F5EFE7;
             border-radius: 25px;
         }
+
         .day {
             background-color: #4F709C;
         }
+
         .night {
             background-color: #213555;
+        }
+
+        #hourly-forecast td.rowsep {
+            background-image: linear-gradient(to top left,
+                    #4F709C calc(50% - 4px),
+                    #F5EFE7,
+                    #4F709C calc(50% + 4px));
+        }
+
+
+        div.row2td {
+            display: inline-block;
+            padding: 8px;
+            margin-left: 4px;
+            margin-right: 4px;
+            height: 78px;
+            color: white;
+            background-color: #4F709C;
+            transform: skewX(-15deg);
+        }
+        div.row2td > div {
+            transform: skewX(15deg);
+            padding: 8px;
+        }
+
+        .time, .temp {
+            font-size: 48px;
+        }
+
+        .hourlydetails > div {
+            font-size: 24px;
         }
     </style>
 </head>
@@ -60,13 +103,15 @@
 
     <div class="topnav">
         <div class="search-container">
-            <input id="citySearch" type="text" placeholder="Search for city..."><button onclick="searchLocation()">search</button>
+            <input id="citySearch" type="text" placeholder="Search for city..."><button
+                onclick="searchLocation()">search</button>
         </div>
     </div>
-    <p>Latitude: <output id="latitude"></output></p>
-    <p>Longitude: <output id="longitude"></output></p>
+    <p>Latitude: <output id="latitude"></output> Longitude: <output id="longitude"></output></p>
     <p>County: <output id="county"></output></p>
     <div id="hourly-forecast"></div>
+
+    <div class="row2"><div class="row2td"><div class="time">Sat 15:00</div></div><div class="row2td"><div class="temp">38 F</div></div><div class="row2td"><div class="hourlydetails"><div> 52% 22 mph<br>Chance Light Rain</div></div></div></div>
 
     <script>
         let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -81,68 +126,75 @@
                 }
             ).catch(
                 function (err) {
-                    console.log('Fetch Error :-S', err);
+                    console.log('Fetch Error :', err);
                 }
             );
         }
         function searchLocation() {
             var input,
-            input = document.getElementById("citySearch");
-            fetchJsonThen("https://nominatim.openstreetmap.org/search?format=geocodejson&featureType=city&addressdetails=1&q=" + input.value, handleGeocodeResponse)
-        }
-        function handleGeocodeResponse(data) {
-            if(data.features.length < 1) {
-                console.log("Failed to find any cities with that name.");
-                return;
-            }
-            var top = data.features[0];
-            console.log(top.properties.geocoding.name + ", " + top.properties.geocoding.state);
-            console.log(top.geometry.coordinates[0] + ", " + top.geometry.coordinates[1]);
-            handleGeoLocation(top.geometry.coordinates[1], top.geometry.coordinates[0])
+                input = document.getElementById("citySearch");
+            fetch("https://nominatim.openstreetmap.org/search?format=geocodejson&featureType=city&addressdetails=1&q=" + input.value)
+                .then(function (response) {
+                    return response.json()
+                })
+                .then(function (data) {
+                    if (data.features.length < 1) {
+                        console.log("Failed to find any cities with that name.");
+                        return;
+                    }
+                    // Pull out the top result and return the coords.
+                    var top = data.features[0];
+                    console.log(top.properties.geocoding.name + ", " + top.properties.geocoding.state);
+                    console.log(top.geometry.coordinates[0] + ", " + top.geometry.coordinates[1]);
+                    handleGeoLocation(top.geometry.coordinates[1], top.geometry.coordinates[0])
+                })
         }
         function getGeoLocation() {
-            navigator.geolocation.getCurrentPosition(function(position) {handleGeoLocation(position.coords.latitude, position.coords.longitude)});
+            navigator.geolocation.getCurrentPosition(function (position) { handleGeoLocation(position.coords.latitude, position.coords.longitude) });
         }
         function handleGeoLocation(latitude, longitude) {
+            var latitude, longitude
             latitude = latitude.toFixed(4);
             longitude = longitude.toFixed(4);
             document.getElementById("latitude").innerHTML = latitude;
             document.getElementById("longitude").innerHTML = longitude;
-            getLocationMetadata(latitude, longitude);
-        }
-        function getLocationMetadata(latitude, longitude) {
-            fetchJsonThen(
-                "https://api.weather.gov/points/" + latitude + "," + longitude,
-                function (data) {
+            // Find the appropriate /gridpoints endpoints.
+            fetch("https://api.weather.gov/points/" + latitude + "," + longitude)
+                .then(function (response) { return response.json() })
+                .then(function (data) {
                     console.log(data)
-                    fetchJsonThen(data.properties.forecastHourly, getHourlyForecast);
-                    //fetchJsonThen(data.properties.forecast, getDailyForecast);
-                    fetchJsonThen(data.properties.county, getLocationName);
-                }
-            )
-        }
-        function getHourlyForecast(data) {
-            let tableText = "<table>";
-            for (let period of data.properties.periods) {
-                tableText += formatPeriod(period);
-            }
-            document.getElementById("hourly-forecast").innerHTML = tableText;
+                    //fetch(data.properties.forecastHourly)
+                    fetch("mockgridpoints.json")
+                        .then(function (response) { return response.json() })
+                        .then(function (data) {
+                            let tableText = "<table>";
+                            for (let period of data.properties.periods) {
+                                tableText += formatPeriod(period);
+                            }
+                            document.getElementById("hourly-forecast").innerHTML = tableText;
+                        });
+                    fetch(data.properties.county)
+                        .then(function (response) { return response.json() })
+                        .then(function (data) {
+                            document.getElementById("county").innerHTML = data.properties.name;
+                        });
+                    //TODO: Also handle daily forecast.
+                });
         }
         function formatPeriod(period) {
             let row = "<tr class=\"" + (period.isDaytime ? "day" : "night") + "\">";
             let start = new Date(Date.parse(period.startTime));
             row += "<td>" + dayNames[start.getDay()] + " " + start.getHours() + ":00</td>";
+            row += "<td class=\"rowsep\"></td>";
             row += "<td>" + period.temperature + " F</td>";
             row += "<td>" + period.probabilityOfPrecipitation.value + "%</td>";
             row += "<td>" + period.windSpeed + "</td>";
+            row += "<td class=\"rowsep\"></td>";
             row += "<td>" + period.shortForecast + "</td>";
             return row + "</tr>";
         }
         function getDailyForecast(data) {
 
-        }
-        function getLocationName(data) {
-            document.getElementById("county").innerHTML = data.properties.name;
         }
         //getGeoLocation();
     </script>
