@@ -3,22 +3,27 @@
 
 <head>
     <style>
-        * {box-sizing: border-box;}
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: 32px;
             background-color: #F5EFE7;
             margin: 0px;
         }
+
         .topnav {
             background-color: #D8C4B6;
             overflow: hidden;
             margin: 0px;
             padding: 0px;
         }
-        .search-container {
-        }
-        .search-container input[type=text]{
+
+        .search-container {}
+
+        .search-container input[type=text] {
             font-size: 32px;
             padding: 8px;
             margin-top: 8px;
@@ -26,7 +31,8 @@
             margin-bottom: 8px;
             border: none;
         }
-        .search-container button{
+
+        .search-container button {
             font-size: 32px;
             padding: 8px;
             margin-left: 0px;
@@ -34,22 +40,28 @@
             background-color: #CD1818;
             border: none;
         }
-        #hourly-forecast table{
+
+        #hourly-forecast table {
             border-collapse: collapse;
             border-spacing: 25px;
             width: 100%;
             color: white;
         }
-        #hourly-forecast td, #hourly-forecast th {
+
+        #hourly-forecast td,
+        #hourly-forecast th {
             padding: 8px;
         }
+
         #hourly-forecast tr {
             border: 8px solid #F5EFE7;
             border-radius: 25px;
         }
+
         .day {
             background-color: #4F709C;
         }
+
         .night {
             background-color: #213555;
         }
@@ -60,68 +72,43 @@
 
     <div class="topnav">
         <div class="search-container">
-            <input id="citySearch" type="text" placeholder="Search for city..."><button onclick="searchLocation()">search</button>
+            <input id="citySearch" type="text" placeholder="Search for city..."><button
+                onclick="searchLocation()">search</button>
         </div>
     </div>
-    <p>Latitude: <output id="latitude"></output></p>
-    <p>Longitude: <output id="longitude"></output></p>
     <p>County: <output id="county"></output></p>
     <div id="hourly-forecast"></div>
 
     <script>
         let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        function fetchJsonThen(url, func) {
-            fetch(url).then(
-                function (response) {
-                    return response.json();
-                }
-            ).then(
-                function (data) {
-                    return func(data);
-                }
-            ).catch(
-                function (err) {
-                    console.log('Fetch Error :-S', err);
-                }
-            );
-        }
-        function searchLocation() {
-            var input,
-            input = document.getElementById("citySearch");
-            fetchJsonThen("https://nominatim.openstreetmap.org/search?format=geocodejson&featureType=city&addressdetails=1&q=" + input.value, handleGeocodeResponse)
-        }
-        function handleGeocodeResponse(data) {
-            if(data.features.length < 1) {
+        async function searchLocation() {
+            let input = document.getElementById("citySearch").value;
+            let geocode = await (await fetch("https://nominatim.openstreetmap.org/search?format=geocodejson&featureType=city&addressdetails=1&q=" + input)).json()
+            if (geocode.features.length < 1) {
                 console.log("Failed to find any cities with that name.");
                 return;
             }
-            var top = data.features[0];
-            console.log(top.properties.geocoding.name + ", " + top.properties.geocoding.state);
-            console.log(top.geometry.coordinates[0] + ", " + top.geometry.coordinates[1]);
-            handleGeoLocation(top.geometry.coordinates[1], top.geometry.coordinates[0])
+            let top = geocode.features[0];
+            let latitude = top.geometry.coordinates[1].toFixed(4);
+            let longitude = top.geometry.coordinates[0].toFixed(4);
+            let pointData = await (await fetch("https://api.weather.gov/points/" + latitude + "," + longitude)).json()
+            let county = (await (await fetch(pointData.properties.county)).json()).properties.name;
+            let forecastHourly = pointData.properties.forecastHourly;
+
+            localStorage.setItem("forecastHourly", pointData.properties.forecastHourly);
+            localStorage.setItem("county", county);
+            localStorage.setItem("cityName", input);
+            await fetchForecast();
         }
+        /*
         function getGeoLocation() {
-            navigator.geolocation.getCurrentPosition(function(position) {handleGeoLocation(position.coords.latitude, position.coords.longitude)});
+            navigator.geolocation.getCurrentPosition((position) => lookupNOAAPoint(position.coords.latitude, position.coords.longitude));
         }
-        function handleGeoLocation(latitude, longitude) {
-            latitude = latitude.toFixed(4);
-            longitude = longitude.toFixed(4);
-            document.getElementById("latitude").innerHTML = latitude;
-            document.getElementById("longitude").innerHTML = longitude;
-            getLocationMetadata(latitude, longitude);
-        }
-        function getLocationMetadata(latitude, longitude) {
-            fetchJsonThen(
-                "https://api.weather.gov/points/" + latitude + "," + longitude,
-                function (data) {
-                    console.log(data)
-                    fetchJsonThen(data.properties.forecastHourly, getHourlyForecast);
-                    //fetchJsonThen(data.properties.forecast, getDailyForecast);
-                    fetchJsonThen(data.properties.county, getLocationName);
-                }
-            )
-        }
-        function getHourlyForecast(data) {
+        */
+        async function fetchForecast() {
+            document.getElementById("citySearch").innerHTML = localStorage.getItem("cityName");
+            document.getElementById("county").innerHTML = localStorage.getItem("county");
+            data = await (await fetch(localStorage.getItem("forecastHourly"))).json();
             let tableText = "<table>";
             for (let period of data.properties.periods) {
                 tableText += formatPeriod(period);
@@ -141,8 +128,8 @@
         function getDailyForecast(data) {
 
         }
-        function getLocationName(data) {
-            document.getElementById("county").innerHTML = data.properties.name;
+        if (document.getElementById("hourly-forecast").innerHTML == "" && localStorage.getItem("forecastHourly") != null) {
+            fetchForecast()
         }
         //getGeoLocation();
     </script>
